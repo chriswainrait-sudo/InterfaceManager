@@ -1,8 +1,4 @@
 local httpService = game:GetService("HttpService")
-local Players = game:GetService("Players")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
 
 local InterfaceManager = {} do
 	InterfaceManager.Folder = "PRIME Settings"
@@ -10,90 +6,7 @@ local InterfaceManager = {} do
         Theme = "Slate",
 		Transparency = true,
         MenuKeybind = "LeftAlt",
-        AutoCursorUnlock = false,
     }
-
-    InterfaceManager.CursorConnection = nil
-	InterfaceManager.TeamConnection = nil
-	InterfaceManager.CursorState = nil
-
-	function InterfaceManager:IsSurvivor()
-		local team = LocalPlayer and LocalPlayer.Team
-		return team ~= nil and string.lower(team.Name) == "survivor"
-	end
-
-	function InterfaceManager:CaptureCursorState()
-		if self.CursorState then return end
-		self.CursorState = {
-			MouseBehavior = UserInputService.MouseBehavior,
-			MouseIconEnabled = UserInputService.MouseIconEnabled,
-		}
-	end
-
-	function InterfaceManager:RestoreCursorState()
-		local state = self.CursorState
-		self.CursorState = nil
-		if not state then return end
-		pcall(function()
-			UserInputService.MouseBehavior = state.MouseBehavior
-			UserInputService.MouseIconEnabled = state.MouseIconEnabled
-		end)
-	end
-
-	function InterfaceManager:UpdateCursorUnlock()
-		local window = self.Library and self.Library.Window
-		local root = window and window.Root
-		local cursorUnlockEnabled = self.Settings.AutoCursorUnlock == true
-		local isSurvivor = self:IsSurvivor()
-		local shouldUnlock = cursorUnlockEnabled
-			and isSurvivor
-			and root ~= nil
-			and root.Visible == true
-			and window.Minimized ~= true
-
-		if shouldUnlock then
-			self:CaptureCursorState()
-			pcall(function()
-				UserInputService.MouseBehavior = Enum.MouseBehavior.Default
-				UserInputService.MouseIconEnabled = true
-			end)
-		elseif cursorUnlockEnabled and isSurvivor then
-			local state = self.CursorState
-			self.CursorState = nil
-			pcall(function()
-				if state then
-					UserInputService.MouseBehavior = state.MouseBehavior
-				end
-				UserInputService.MouseIconEnabled = false
-			end)
-		else
-			self:RestoreCursorState()
-		end
-	end
-
-	function InterfaceManager:BindCursorVisibility()
-		if self.CursorConnection then
-			self.CursorConnection:Disconnect()
-			self.CursorConnection = nil
-		end
-		if self.TeamConnection then
-			self.TeamConnection:Disconnect()
-			self.TeamConnection = nil
-		end
-
-		local window = self.Library and self.Library.Window
-		if window and window.Root then
-			self.CursorConnection = window.Root:GetPropertyChangedSignal("Visible"):Connect(function()
-				self:UpdateCursorUnlock()
-			end)
-		end
-		if LocalPlayer then
-			self.TeamConnection = LocalPlayer:GetPropertyChangedSignal("Team"):Connect(function()
-				self:UpdateCursorUnlock()
-			end)
-		end
-		self:UpdateCursorUnlock()
-	end
 
     function InterfaceManager:SetFolder(folder)
 		self.Folder = folder
@@ -231,49 +144,11 @@ local InterfaceManager = {} do
 		end
 
 
-		if game.PlaceId == 93978595733734 or game.GameId == 93978595733734 then
-			pcall(function()
-				if type(section) == "table" and type(section.AddToggle) == "function" then
-					section:AddToggle("AutoCursorUnlock", {
-						Title = "Auto Cursor Unlock",
-						Description = "Automatically show cursor when UI opens and hide when closed",
-						Default = Settings.AutoCursorUnlock or false,
-						Callback = function(Value)
-							if type(Value) == "boolean" then
-								Settings.AutoCursorUnlock = Value
-								InterfaceManager:SaveSettings()
-								InterfaceManager:UpdateCursorUnlock()
-							end
-						end
-					})
-				end
-			end)
-		end
-		InterfaceManager:BindCursorVisibility()
-	    end
-
-	    function InterfaceManager:DisableCursorUnlock()
-        if InterfaceManager.CursorConnection then
-            InterfaceManager.CursorConnection:Disconnect()
-            InterfaceManager.CursorConnection = nil
-	        end
-		if InterfaceManager.TeamConnection then
-			InterfaceManager.TeamConnection:Disconnect()
-			InterfaceManager.TeamConnection = nil
-		end
-		self:RestoreCursorState()
-	    end
+	end
 
     function InterfaceManager:SetLibrary(library)
 		self.Library = library
 
-		local originalDestroy = library.Destroy
-		library.Destroy = function(lib, ...)
-			InterfaceManager:DisableCursorUnlock()
-			if originalDestroy then
-				return originalDestroy(lib, ...)
-			end
-		end
 	end
 end
 
